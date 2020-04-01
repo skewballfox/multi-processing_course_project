@@ -31,7 +31,7 @@ int main(int argc, char** argv)
     time_t start, finish;
     //IMO a rather hacky solution to handling arbituarily sized graphs
     //not the most elegant but tis the nature of C
-    char *Graphfile="array_1.txt";
+    char *Graphfile=argv[1];
 
     //get the number of nodes in the graph    
     const int nodeCount=getGraphSize(Graphfile);
@@ -39,9 +39,9 @@ int main(int argc, char** argv)
     printf("\nGenerating Graph\n\n");
     //instantiate the graph so it can be modified in Functions
     int Graph[nodeCount][nodeCount];
-
+    
     //get the edge weights from a file
-    getGraph("array_1.txt",nodeCount,Graph);
+    getGraph(Graphfile,nodeCount,Graph);
     printGraph(nodeCount,Graph);
 
     //find the shortest path using Floyd's Algorithm
