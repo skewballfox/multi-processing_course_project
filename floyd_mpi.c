@@ -1,8 +1,12 @@
-/* Purpose: mpi implementation of floyd's algorithm. finds all the shortest path from
- * every node to every other node.
+/* Purpose: mpi implementation of floyd's algorithm that relies on the fact that the inner
+ * two loops of FWA are independent of the outer loop, thus parallizes those steps. I want to
+ * try the pipelined 2d block implementation, but Assignments are stacking up and my brain feels like soup
+ * 
+ * 
  * 
  * Author: Joshua Ferguson
  */
+ 
 //precompiler macro for finding min value
 //I only wish I could claim credit for this
 //for reference: https://stackoverflow.com/questions/3437404/min-and-max-in-c#3437484
@@ -39,19 +43,21 @@ int main(int argCount, char** argVector)
     
     //IMO a rather hacky solution to handling arbituarily sized graphs
     //not the most elegant but tis the nature of C
-    char *Graphfile="array_1.txt";
+    if (processRank==0) {
+        char *Graphfile="array_1.txt";
 
-    //get the number of nodes in the graph    
-    const int nodeCount=getGraphSize(Graphfile);
+        //get the number of nodes in the graph    
+        const int nodeCount=getGraphSize(Graphfile);
 
-    printf("\nGenerating Graph\n\n");
-    //instantiate the graph so it can be modified in Functions
-    int Graph[nodeCount][nodeCount];
+        printf("\nGenerating Graph\n\n");
+        //instantiate the graph so it can be modified in Functions
+        int Graph[nodeCount][nodeCount];
 
-    //get the edge weights from a file
-    getGraph("array_1.txt",nodeCount,Graph);
-    printGraph(nodeCount,Graph);
-
+        //get the edge weights from a file
+        getGraph("array_1.txt",nodeCount,Graph);
+        printGraph(nodeCount,Graph);
+        MPI_Scatter(a,);
+    }
     //find the shortest path using Floyd's Algorithm
     printf("\nstarting floyd's Algorithm\n\n");
 
