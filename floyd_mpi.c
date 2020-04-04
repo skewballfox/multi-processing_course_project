@@ -28,6 +28,7 @@ const int getGraphSize(char *);
 void getGraph(char * ,const int nodeCount,int Graph[nodeCount][nodeCount]);
 void printGraph(const int nodeCount,int Graph[][nodeCount]);
 
+bool check_fox_conditions(const int nodeCount,int numberOfProcesses);
 void FloydsAlgorithm(const int nodeCount, int Graph[nodeCount][nodeCount]);
 void storeElapsedTime(time_t);
 
@@ -44,7 +45,7 @@ int main(int argCount, char** argVector)
     //IMO a rather hacky solution to handling arbituarily sized graphs
     //not the most elegant but tis the nature of C
     if (processRank==0) {
-        char *Graphfile="array_1.txt";
+        char *Graphfile=argVector[1];
 
         //get the number of nodes in the graph    
         const int nodeCount=getGraphSize(Graphfile);
@@ -54,9 +55,11 @@ int main(int argCount, char** argVector)
         int Graph[nodeCount][nodeCount];
 
         //get the edge weights from a file
-        getGraph("array_1.txt",nodeCount,Graph);
+        getGraph(Graphfile,nodeCount,Graph);
         printGraph(nodeCount,Graph);
-        MPI_Scatter(a,);
+
+        //Divide the graph into chunks
+        //MPI_Scatter(Graph,);
     }
     //find the shortest path using Floyd's Algorithm
     printf("\nstarting floyd's Algorithm\n\n");
@@ -133,7 +136,21 @@ void getGraph(char *arrayFile,const int nodeCount, int Graph[nodeCount][nodeCoun
     fclose(file);
     return;
 }
-
+int checkConditions(const int nodeCount,int numberOfProcesses,char * condititon){
+    /* This int function is used to decide how to best divide the work
+     * for the parallel implementation of the floyd algorithm
+     * a Note on conditions for fox algorithm
+     * b means block mapping which is the preferable approach
+     * */
+    int pRoot;
+    pRoot=sqrt(numberOfProcesses);
+    if (pRoot*pRoot==numberOfProcesses) {
+        if (nodeCount%pRoot==0) {
+            condition='b';
+            return pRoot; 
+        }
+    }
+}
 void printGraph(const int nodeCount,int Graph[][nodeCount]){
     int row,column;
     for (row = 0; row < nodeCount; row++) {//row
@@ -148,7 +165,14 @@ void printGraph(const int nodeCount,int Graph[][nodeCount]){
     }
 }
 
-void FloydsAlgorithm(const int nodeCount, int Graph[nodeCount][nodeCount]){
+
+void FloydsAlgorithm(int processRank,int numberOfProcesses,const int nodeCount, int Graph[nodeCount][nodeCount]){
+    int pRoot=sqrt(numberOfProcesses);
+    int blockSize=nodeCount/pRoot;
+    int initialRow=(processRank/pRoot)*blockSize;
+    int lastRow=initialRow+blockSize;
+    int initialColumn=(processRank%pRoot)*blockSize;
+    int lastColumn=initialColumn+blockSize;
     int i,j,k;
     for (k = 0; k < nodeCount; k++) {
         for (i = 0; i < nodeCount; i++) {
