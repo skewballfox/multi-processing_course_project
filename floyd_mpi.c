@@ -29,7 +29,6 @@ void getGraph(char * ,const int nodeCount,int Graph[nodeCount][nodeCount]);
 void printGraph(const int nodeCount,int Graph[][nodeCount]);
 
 int getLoopCount(const int nodeCount,int numberOfProcesses);
-bool check_fox_conditions(const int nodeCount,int numberOfProcesses);
 void FloydsAlgorithm(const int nodeCount, int Graph[nodeCount][nodeCount]);
 void storeElapsedTime(time_t);
 
@@ -45,36 +44,36 @@ int main(int argCount, char** argVector)
     
     //IMO a rather hacky solution to handling arbituarily sized graphs
     //not the most elegant but tis the nature of C
-    int nc
+    int nc;
+    char *Graphfile=argVector[1];
     if (processRank==0) {
-        char *Graphfile=argVector[1];
-
         //get the number of nodes in the graph    
         nc=getGraphSize(Graphfile);
     }
-    MPI_Bcast(nc,1,MPI_INT,0,MPI_COMM_WORLD);
+    MPI_Bcast(&nc,1,MPI_INT,0,MPI_COMM_WORLD);
     const int nodeCount=(const int)nc;
-    int sizes[nodeCount]
+    int sizes[nodeCount];
     int Graph[nodeCount][nodeCount];
-    if (numberOfProcesses<NodeCount){//if simple parallization will work
-
-        MPI_Aint base;
-        MPI_Address(Graph[0], &base);
-        MPI_Aint* displacements = new int[nodeCount];
-        for (int i=0; i<nodeCount; ++i)
-        {
-            MPI_Address(nodeCount[i], &displacements[i]);
-            displacements[i] -= base;
-        }
-
-        MPI_Datatype matrixType;
-        MPI_Type_hindexed(nodeCount, sizes, displacements, MPI_INTEGER, &matrixType);
-        MPI_Type_commit(&matrixType);
-    } else {
-        printf("please try again with a process count less than the node count");    
+    if (numberOfProcesses>nodeCount){//if simple parallization will work
+        printf("please try again with a process count less than the node count");
+        exit(1);
     }
+    MPI_Aint base;
+    MPI_Address(Graph[0], &base);
+    MPI_Aint displacements[nodeCount];
+    for (int i=0; i<nodeCount; ++i)
+    {
+        MPI_Address(Graph[i], &displacements[i]);
+        displacements[i] -= base;
+    }
+
+    MPI_Datatype matrixType;
+    MPI_Type_hindexed(nodeCount, sizes, displacements , MPI_INTEGER, &matrixType);
+    MPI_Type_commit(&matrixType);
+
+    
     if (processRank==0){
-        getGraph(nodeCount,Graph)
+        getGraph(Graphfile,nodeCount,Graph);
     }
     MPI_Bcast(Graph,1,matrixType,0,MPI_COMM_WORLD);
     printf("the graph for process %d\n\n",processRank);
@@ -165,13 +164,7 @@ void printGraph(const int nodeCount,int Graph[][nodeCount]){
 }
 
 
-void FloydsAlgorithm(int processRank,int numberOfProcesses,const int nodeCount, int Graph[nodeCount][nodeCount]){
-    int pRoot=sqrt(numberOfProcesses);
-    int blockSize=nodeCount/pRoot;
-    int initialRow=(processRank/pRoot)*blockSize;
-    int lastRow=initialRow+blockSize;
-    int initialColumn=(processRank%pRoot)*blockSize;
-    int lastColumn=initialColumn+blockSize;
+void FloydsAlgorithm(const int nodeCount, int Graph[nodeCount][nodeCount]){
     int i,j,k;
     for (k = 0; k < nodeCount; k++) {
         for (i = 0; i < nodeCount; i++) {
