@@ -1,1 +1,1 @@
-serial runtime : 6.924845E-310
+serial runtime : 6.909631E-310

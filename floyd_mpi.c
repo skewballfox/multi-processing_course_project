@@ -21,13 +21,14 @@
 #include <limits.h>
 #include <time.h>
 #include <assert.h>
-#include <openmpi.h>
+#include <mpi.h>
 
 //Function declarations
-const int getGraphSize(char *);
+int getGraphSize(char *);
 void getGraph(char * ,const int nodeCount,int Graph[nodeCount][nodeCount]);
 void printGraph(const int nodeCount,int Graph[][nodeCount]);
 
+int getLoopCount(const int nodeCount,int numberOfProcesses);
 bool check_fox_conditions(const int nodeCount,int numberOfProcesses);
 void FloydsAlgorithm(const int nodeCount, int Graph[nodeCount][nodeCount]);
 void storeElapsedTime(time_t);
@@ -44,31 +45,42 @@ int main(int argCount, char** argVector)
     
     //IMO a rather hacky solution to handling arbituarily sized graphs
     //not the most elegant but tis the nature of C
+    int nc
     if (processRank==0) {
         char *Graphfile=argVector[1];
 
         //get the number of nodes in the graph    
-        const int nodeCount=getGraphSize(Graphfile);
-
-        printf("\nGenerating Graph\n\n");
-        //instantiate the graph so it can be modified in Functions
-        int Graph[nodeCount][nodeCount];
-
-        //get the edge weights from a file
-        getGraph(Graphfile,nodeCount,Graph);
-        printGraph(nodeCount,Graph);
-
-        //Divide the graph into chunks
-        //MPI_Scatter(Graph,);
+        nc=getGraphSize(Graphfile);
     }
-    //find the shortest path using Floyd's Algorithm
-    printf("\nstarting floyd's Algorithm\n\n");
+    MPI_Bcast(nc,1,MPI_INT,0,MPI_COMM_WORLD);
+    const int nodeCount=(const int)nc;
+    int sizes[nodeCount]
+    int Graph[nodeCount][nodeCount];
+    if (numberOfProcesses<NodeCount){//if simple parallization will work
 
-    //set barrier for performance evalutation
-    MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Wtime(&start);
-    FloydsAlgorithm(nodeCount,Graph);
-    MPI_Wtime(&finish);
+        MPI_Aint base;
+        MPI_Address(Graph[0], &base);
+        MPI_Aint* displacements = new int[nodeCount];
+        for (int i=0; i<nodeCount; ++i)
+        {
+            MPI_Address(nodeCount[i], &displacements[i]);
+            displacements[i] -= base;
+        }
+
+        MPI_Datatype matrixType;
+        MPI_Type_hindexed(nodeCount, sizes, displacements, MPI_INTEGER, &matrixType);
+        MPI_Type_commit(&matrixType);
+    } else {
+        printf("please try again with a process count less than the node count");    
+    }
+    if (processRank==0){
+        getGraph(nodeCount,Graph)
+    }
+    MPI_Bcast(Graph,1,matrixType,0,MPI_COMM_WORLD);
+    printf("the graph for process %d\n\n",processRank);
+    printGraph(nodeCount,Graph);
+
+
     printf("%lf %lf\n",finish,start);
 
     //display the results
@@ -79,7 +91,7 @@ int main(int argCount, char** argVector)
 }
 
 //Functions
-const int getGraphSize(char *arrayFile){
+int getGraphSize(char *arrayFile){
     FILE* file = fopen(arrayFile,"r");
     if (!file) {
         perror("issue opening file containing array");
@@ -99,7 +111,7 @@ const int getGraphSize(char *arrayFile){
         printf("based on the line count the graph has %d nodes\n",lineCount);
     }
     fclose(file);
-    return (const int)lineCount;
+    return lineCount;
 }
  
 void getGraph(char *arrayFile,const int nodeCount, int Graph[nodeCount][nodeCount]){
@@ -136,21 +148,8 @@ void getGraph(char *arrayFile,const int nodeCount, int Graph[nodeCount][nodeCoun
     fclose(file);
     return;
 }
-int checkConditions(const int nodeCount,int numberOfProcesses,char * condititon){
-    /* This int function is used to decide how to best divide the work
-     * for the parallel implementation of the floyd algorithm
-     * a Note on conditions for fox algorithm
-     * b means block mapping which is the preferable approach
-     * */
-    int pRoot;
-    pRoot=sqrt(numberOfProcesses);
-    if (pRoot*pRoot==numberOfProcesses) {
-        if (nodeCount%pRoot==0) {
-            condition='b';
-            return pRoot; 
-        }
-    }
-}
+
+
 void printGraph(const int nodeCount,int Graph[][nodeCount]){
     int row,column;
     for (row = 0; row < nodeCount; row++) {//row
