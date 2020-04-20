@@ -17,22 +17,24 @@
 #include <limits.h>
 #include <time.h>
 #include <assert.h>
+#include <omp.h>
 
 //Function declarations
 const int getGraphSize(char *);
 void getGraph(char * ,const int nodeCount,int Graph[nodeCount][nodeCount]);
 void printGraph(const int nodeCount,int Graph[][nodeCount]);
 
-void FloydsAlgorithm(const int nodeCount, int Graph[nodeCount][nodeCount]);
+void FloydsAlgorithm(int threadCount, const int nodeCount, int Graph[nodeCount][nodeCount]);
 void storeElapsedTime(time_t);
 
 int main(int argc, char** argv)
 {
     time_t start, finish;
+    int threadCount;
     //IMO a rather hacky solution to handling arbituarily sized graphs
     //not the most elegant but tis the nature of C
     char *Graphfile=argv[1];
-
+    threadCount=atoi(argv[2]); 
     //get the number of nodes in the graph    
     const int nodeCount=getGraphSize(Graphfile);
 
@@ -43,16 +45,15 @@ int main(int argc, char** argv)
     //get the edge weights from a file
     getGraph(Graphfile,nodeCount,Graph);
     printGraph(nodeCount,Graph);
-
     //find the shortest path using Floyd's Algorithm
     printf("\nstarting floyd's Algorithm\n\n");
 
     time(&start);
-    FloydsAlgorithm(nodeCount,Graph);
+    FloydsAlgorithm(threadCount,nodeCount,Graph);
     time(&finish);
 
     //display the results
-		printf("Resulting Graph: \n");
+	printf("Resulting Graph: \n");
     printGraph(nodeCount,Graph);
     storeElapsedTime(finish-start);
     return 0;
@@ -131,16 +132,20 @@ void printGraph(const int nodeCount,int Graph[][nodeCount]){
     }
 }
 
-void FloydsAlgorithm(const int nodeCount, int Graph[nodeCount][nodeCount]){
-    int i,j,k;
-    for (k = 0; k < nodeCount; k++) {
-        for (i = 0; i < nodeCount; i++) {
-            for (j = 0; j < nodeCount; j++) {
-                if (Graph[i][k]!=INT_MAX && Graph[k][j]!=INT_MAX) {
-                    //NOTE: fun things happen when you add INT_MAX to INT_MAX 
-                    Graph[i][j]=min(Graph[i][j], Graph[i][k]+Graph[k][j]);
-                }
-            }   
+void FloydsAlgorithm(int threadCount,const int nodeCount, int Graph[nodeCount][nodeCount]){
+    int k,i,j;
+    #pragma omp parallel shared(Graph,nodeCount)
+    {
+        for (k=0;k<nodeCount;k++) {
+            #pragma omp parallel for private(i,j) schedule(dynamic)
+            for (i = 0; i < nodeCount; i++) {
+                for (j = 0; j < nodeCount; j++) {
+                    if (Graph[i][k]!=INT_MAX && Graph[k][j]!=INT_MAX) {
+                        //NOTE: fun things happen when you add INT_MAX to INT_MAX 
+                        Graph[i][j]=min(Graph[i][j], Graph[i][k]+Graph[k][j]);
+                    }
+                }   
+            }
         }
     }
 }
@@ -148,7 +153,7 @@ void FloydsAlgorithm(const int nodeCount, int Graph[nodeCount][nodeCount]){
 
 void storeElapsedTime(time_t elapsedTime) {
     const char *format="%E";
-    FILE* file = fopen("serial_runtime.txt","w");
+    FILE* file = fopen("OpenMP_runtime.txt","w");
     assert(file);
     printf(format,elapsedTime);
     fprintf(file,format,elapsedTime);
